@@ -11,6 +11,7 @@ from typing import Callable
 
 from config import load_settings, update_env_values
 from ctl import (
+    HELP_DOC_URL,
     SERVICE_NAME,
     format_ago,
     format_brl,
@@ -335,7 +336,7 @@ class ControlPanelWindow:
         self.tabs_bar = tk.Frame(body, bg=p.surface_container, padx=4, pady=4)
         self.tabs_bar.pack(fill=tk.X, pady=(12, 0))
         self.tab_buttons: dict[str, tk.Button] = {}
-        for tab_id in ("deals", "watchlist", "settings"):
+        for tab_id in ("deals", "watchlist"):
             btn = self._button(
                 self.tabs_bar,
                 "",
@@ -355,6 +356,26 @@ class ControlPanelWindow:
         footer_row.pack(fill=tk.X)
         self.lbl_footer = self._label(footer_row, "", p.surface)
         self.lbl_footer.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.btn_help = self._button(
+            footer_row,
+            "?",
+            lambda: open_url_in_browser(HELP_DOC_URL),
+            p.surface_container,
+            p.on_surface_variant,
+            padx=9,
+            pady=6,
+        )
+        self.btn_help.pack(side=tk.RIGHT, padx=(4, 0))
+        self.btn_settings = self._button(
+            footer_row,
+            "⚙",
+            lambda: self._select_tab("deals" if self.active_tab == "settings" else "settings"),
+            p.surface_container,
+            p.on_surface_variant,
+            padx=9,
+            pady=6,
+        )
+        self.btn_settings.pack(side=tk.RIGHT, padx=(4, 0))
         self.btn_check = self._button(
             footer_row, "⟳  Buscar agora", self._on_check_now, p.secondary_container, p.on_secondary_container
         )
@@ -381,15 +402,25 @@ class ControlPanelWindow:
             notif_row, "Testar", self._on_test_pc_notify, p.secondary_container, p.on_secondary_container, size=9, pady=3
         ).pack(side=tk.RIGHT)
 
-        self._label(self.settings_frame, "Telegram (opcional)", bg, p.on_surface, 10, "bold").pack(
-            fill=tk.X, pady=(14, 0)
-        )
+        tg_header = tk.Frame(self.settings_frame, bg=bg)
+        tg_header.pack(fill=tk.X, pady=(14, 0))
+        self._label(tg_header, "Telegram (opcional)", bg, p.on_surface, 10, "bold").pack(side=tk.LEFT)
+        self._button(
+            tg_header,
+            "? Guia (PT/EN)",
+            lambda: open_url_in_browser(HELP_DOC_URL),
+            p.secondary_container,
+            p.on_secondary_container,
+            size=9,
+            padx=8,
+            pady=2,
+        ).pack(side=tk.RIGHT)
         self._label(self.settings_frame, "Bot token (@BotFather)", bg).pack(fill=tk.X, pady=(6, 2))
         self.entry_token = self._entry(self.settings_frame, size=10)
         self.entry_token.pack(fill=tk.X, ipady=4)
         self.entry_token.insert(0, self.settings.telegram_bot_token)
 
-        self._label(self.settings_frame, "Chat ID", bg).pack(fill=tk.X, pady=(8, 2))
+        self._label(self.settings_frame, "Chat ID (opcional — auto com /start)", bg).pack(fill=tk.X, pady=(8, 2))
         self.entry_chat_id = self._entry(self.settings_frame, size=10)
         self.entry_chat_id.pack(fill=tk.X, ipady=4)
         if self.settings.allowed_chat_id:
@@ -460,6 +491,11 @@ class ControlPanelWindow:
             bg = p.secondary_container if selected else p.surface_container
             fg = p.on_secondary_container if selected else p.on_surface_variant
             btn.config(text=labels[tab_id], bg=bg, fg=fg, activebackground=bg, activeforeground=fg)
+
+        settings_selected = self.active_tab == "settings"
+        s_bg = p.primary if settings_selected else p.surface_container
+        s_fg = p.on_primary if settings_selected else p.on_surface_variant
+        self.btn_settings.config(bg=s_bg, fg=s_fg, activebackground=s_bg, activeforeground=s_fg)
 
         # Conteúdo
         self.settings_frame.pack_forget()

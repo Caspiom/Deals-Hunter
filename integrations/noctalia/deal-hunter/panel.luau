@@ -11,6 +11,12 @@ local inputSeed = 0
 local exclusive = false
 local activeTab = "deals"
 
+local desktopNotif = true
+local typedToken = ""
+local typedChatId = ""
+local settingsSynced = false
+local settingsSeed = 0
+
 local function sendCmd(action, arg)
     noctalia.state.set("cmd", {
         action = action,
@@ -284,6 +290,73 @@ local function buildWatchlist(items, busy)
     return ui.scroll({ flexGrow = 1, gap = 6 }, rows)
 end
 
+local function buildSettings(busy)
+    return ui.scroll({ flexGrow = 1, gap = 8 }, {
+        ui.column({ gap = 8, padding = 12, radius = 12, fill = "surface_variant/0.4" }, {
+            ui.row({ gap = 8, align = "center", justify = "space_between" }, {
+                ui.column({ gap = 2, flexGrow = 1 }, {
+                    ui.label({ text = "Notificações no PC", fontSize = 13, fontWeight = "bold", color = "on_surface" }),
+                    ui.label({ text = "Alertas clicáveis direto na área de trabalho", fontSize = 11, color = "on_surface_variant" }),
+                }),
+                ui.toggle({
+                    checked = desktopNotif,
+                    enabled = not busy,
+                    onChange = "onDesktopNotifChange",
+                }),
+                ui.button({
+                    text = "Testar",
+                    glyph = "bell",
+                    variant = "secondary",
+                    enabled = not busy,
+                    onClick = "onTestNotify",
+                }),
+            }),
+        }),
+
+        ui.column({ gap = 8, padding = 12, radius = 12, fill = "surface_variant/0.4" }, {
+            ui.row({ gap = 8, align = "center", justify = "space_between" }, {
+                ui.column({ gap = 2, flexGrow = 1 }, {
+                    ui.label({ text = "Telegram (@BotFather)", fontSize = 13, fontWeight = "bold", color = "on_surface" }),
+                    ui.label({ text = "Opcional: receba alertas no celular", fontSize = 11, color = "on_surface_variant" }),
+                }),
+                ui.button({
+                    text = "Guia (PT/EN)",
+                    glyph = "help",
+                    variant = "secondary",
+                    onClick = "onOpenHelp",
+                }),
+            }),
+            ui.column({ gap = 4 }, {
+                ui.label({ text = "Bot Token (@BotFather)", fontSize = 11, fontWeight = "medium", color = "on_surface_variant" }),
+                ui.input({
+                    key = "token-input-" .. tostring(settingsSeed),
+                    value = typedToken,
+                    placeholder = "Ex: 123456:AAHdqTcv...",
+                    onChange = "onTokenChange",
+                    enabled = not busy,
+                }),
+            }),
+            ui.column({ gap = 4 }, {
+                ui.label({ text = "Chat ID (opcional — auto com /start)", fontSize = 11, fontWeight = "medium", color = "on_surface_variant" }),
+                ui.input({
+                    key = "chatid-input-" .. tostring(settingsSeed),
+                    value = typedChatId,
+                    placeholder = "Ex: 987654321",
+                    onChange = "onChatIdChange",
+                    enabled = not busy,
+                }),
+            }),
+            ui.button({
+                text = "Salvar ajustes",
+                glyph = "check",
+                variant = "primary",
+                enabled = not busy,
+                onClick = "onSaveSettings",
+            }),
+        }),
+    })
+end
+
 local function buildFooter(status, busy)
     local text
     if busy then
@@ -294,7 +367,7 @@ local function buildFooter(status, busy)
         text = tostring(status.footer or "Pronto")
     end
 
-    return ui.row({ gap = 8, align = "center" }, {
+    return ui.row({ gap = 6, align = "center" }, {
         ui.label({ text = text, fontSize = 11, color = "on_surface_variant", flexGrow = 1 }),
         ui.button({
             text = "Buscar agora",
@@ -302,6 +375,16 @@ local function buildFooter(status, busy)
             variant = "secondary",
             enabled = not busy,
             onClick = "onCheckNow",
+        }),
+        ui.button({
+            glyph = "settings",
+            variant = activeTab == "settings" and "primary" or "ghost",
+            onClick = "onToggleSettings",
+        }),
+        ui.button({
+            glyph = "help",
+            variant = "ghost",
+            onClick = "onOpenHelp",
         }),
     })
 end
@@ -313,6 +396,14 @@ local function render()
     local items = type(status.items) == "table" and status.items or {}
     local recentDeals = type(status.recent_deals) == "table" and status.recent_deals or {}
 
+    if not settingsSynced and status.desktop_notifications ~= nil then
+        desktopNotif = status.desktop_notifications == true
+        typedToken = tostring(status.telegram_bot_token or "")
+        typedChatId = tostring(status.allowed_chat_id or "")
+        settingsSynced = true
+        settingsSeed += 1
+    end
+
     local children = {
         buildHeader(status, running, busy),
         buildQuickAdd(busy),
@@ -323,6 +414,8 @@ local function render()
     table.insert(children, buildTabs(#recentDeals, #items))
     if activeTab == "watchlist" then
         table.insert(children, buildWatchlist(items, busy))
+    elseif activeTab == "settings" then
+        table.insert(children, buildSettings(busy))
     else
         table.insert(children, buildDeals(recentDeals))
     end
@@ -343,6 +436,46 @@ end
 function onShowWatchlist()
     activeTab = "watchlist"
     render()
+end
+
+function onToggleSettings()
+    if activeTab == "settings" then
+        activeTab = "deals"
+    else
+        activeTab = "settings"
+    end
+    render()
+end
+
+function onOpenHelp()
+    sendCmd("open-help", "")
+end
+
+function onDesktopNotifChange(val)
+    desktopNotif = val == true
+end
+
+function onTokenChange(val)
+    typedToken = tostring(val or "")
+end
+
+function onChatIdChange(val)
+    typedChatId = tostring(val or "")
+end
+
+function onTestNotify()
+    sendCmd("test-notify", "")
+end
+
+function onSaveSettings()
+    local flag = desktopNotif and "1" or "0"
+    local payload = string.format(
+        "%s|%s|%s",
+        flag,
+        noctalia.string.trim(typedToken),
+        noctalia.string.trim(typedChatId)
+    )
+    sendCmd("save-settings", payload)
 end
 
 function onExclusiveChange(val)

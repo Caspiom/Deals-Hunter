@@ -8,13 +8,14 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from config import load_settings
+from config import load_settings, update_env_values
 from db import Database
 from main import DealHunterApp
 from notifier import open_url_in_browser, send_desktop_notification
 
 BASE_DIR = Path(__file__).resolve().parent
 SERVICE_NAME = "deal-hunter.service"
+HELP_DOC_URL = "https://github.com/Caspiom/Deals-Hunter/tree/main/doc"
 
 
 def is_service_active() -> bool:
@@ -60,6 +61,7 @@ def format_saving(price: float, max_price: float | None) -> str:
 
 
 def build_status_dict(db: Database, message: str = "") -> dict:
+    settings = load_settings(require_telegram=False)
     running = is_service_active()
     items = db.list_watchlist()
     items_by_id = {it.id: it for it in items}
@@ -88,6 +90,11 @@ def build_status_dict(db: Database, message: str = "") -> dict:
         "active_count": len(active_queries),
         "total_count": len(items),
         "footer": footer,
+        "desktop_notifications": settings.desktop_notifications,
+        "telegram_configured": bool(settings.telegram_bot_token),
+        "telegram_bot_token": settings.telegram_bot_token,
+        "allowed_chat_id": str(settings.allowed_chat_id) if settings.allowed_chat_id else "",
+        "help_url": HELP_DOC_URL,
         "items": [
             {
                 "id": it.id,
@@ -264,6 +271,25 @@ def main() -> None:
         if len(sys.argv) > 2:
             open_url_in_browser(sys.argv[2].strip())
             msg = "Oferta aberta no navegador!"
+    elif cmd == "open-help":
+        open_url_in_browser(HELP_DOC_URL)
+        msg = "Guia aberto no navegador!"
+    elif cmd == "save-settings":
+        raw = " ".join(sys.argv[2:])
+        parts = raw.split("|")
+        desktop_flag = parts[0].strip() if len(parts) > 0 else "1"
+        bot_token = parts[1].strip() if len(parts) > 1 else ""
+        chat_id = parts[2].strip() if len(parts) > 2 else ""
+        update_env_values(
+            {
+                "DESKTOP_NOTIFICATIONS": "true" if desktop_flag in ("1", "true", "True") else "false",
+                "TELEGRAM_BOT_TOKEN": bot_token,
+                "ALLOWED_CHAT_ID": chat_id,
+            }
+        )
+        if is_service_active():
+            subprocess.run(["systemctl", "--user", "restart", SERVICE_NAME], check=False)
+        msg = "Ajustes de notificação e @BotFather salvos!"
 
     print(json.dumps(build_status_dict(db, message=msg), ensure_ascii=False))
 
