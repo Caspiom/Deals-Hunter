@@ -93,7 +93,7 @@ end
 local function buildQuickAdd(busy)
     return ui.column({ gap = 10, padding = 12, radius = 12, fill = "surface_variant/0.4" }, {
         ui.row({ gap = 8, align = "center" }, {
-            ui.column({ gap = 4, flexGrow = 3 }, {
+            ui.column({ gap = 4, flexGrow = 2 }, {
                 ui.label({ text = "Produto", fontSize = 12, fontWeight = "medium", color = "on_surface_variant" }),
                 ui.input({
                     key = "query-input-" .. tostring(inputSeed),
@@ -105,7 +105,7 @@ local function buildQuickAdd(busy)
                 }),
             }),
             ui.column({ gap = 4, flexGrow = 1 }, {
-                ui.label({ text = "Preço máx. (R$)", fontSize = 12, fontWeight = "medium", color = "on_surface_variant" }),
+                ui.label({ text = "Até (R$)", fontSize = 12, fontWeight = "medium", color = "on_surface_variant" }),
                 ui.input({
                     key = "price-input-" .. tostring(inputSeed),
                     value = typedPrice,
@@ -117,7 +117,7 @@ local function buildQuickAdd(busy)
             }),
             -- rótulo vazio para o botão alinhar com os campos, não com os rótulos
             ui.column({ gap = 4 }, {
-                ui.label({ text = " ", fontSize = 12 }),
+                ui.label({ text = " ", fontSize = 12, fontWeight = "medium" }),
                 ui.button({
                     glyph = "plus",
                     variant = "primary",
