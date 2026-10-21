@@ -28,6 +28,7 @@ entry = "bar.luau"
 id = "panel"
 entry = "panel.luau"
 width = 420
+height = 470
 placement = "attached"
 position = "auto"
 open_near_click = true

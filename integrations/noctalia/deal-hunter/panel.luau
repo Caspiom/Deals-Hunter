@@ -163,15 +163,26 @@ local function render()
         }),
     }
 
+    local scrollRows = {}
+
     -- Seção Expansível: Watchlist
     if showWatchlist then
-        local wlRows = {}
+        if showDeals then
+            table.insert(scrollRows, ui.label({
+                text = "Watchlist",
+                fontSize = 12,
+                fontWeight = "bold",
+                color = "primary",
+            }))
+        end
+        local wlCount = 0
         for _idx, item in ipairs(items) do
+            wlCount += 1
             local isAct = item.active == true
             local itemId = tostring(item.id)
             local priceStr = string.format("<= R$ %.0f", tonumber(item.max_price) or 0)
 
-            table.insert(wlRows, ui.row({
+            table.insert(scrollRows, ui.row({
                 gap = 8,
                 align = "center",
                 padding = 8,
@@ -216,20 +227,27 @@ local function render()
             }))
         end
 
-        if #wlRows == 0 then
-            table.insert(wlRows, ui.label({
+        if wlCount == 0 then
+            table.insert(scrollRows, ui.label({
                 text = "Nenhum produto cadastrado na Watchlist.",
                 color = "on_surface_variant",
             }))
         end
-
-        table.insert(mainChildren, ui.column({ gap = 6 }, wlRows))
     end
 
     -- Seção Expansível: Promoções achadas
     if showDeals then
-        local dealRows = {}
+        if showWatchlist then
+            table.insert(scrollRows, ui.label({
+                text = "Promoções achadas",
+                fontSize = 12,
+                fontWeight = "bold",
+                color = "primary",
+            }))
+        end
+        local dealCount = 0
         for _i, deal in ipairs(recentDeals) do
+            dealCount += 1
             local dealUrl = tostring(deal.url or "")
             local shortTitle = tostring(deal.title or "Oferta")
             if #shortTitle > 34 then
@@ -241,7 +259,7 @@ local function render()
                 tostring(deal.store or "Loja")
             )
 
-            table.insert(dealRows, ui.row({
+            table.insert(scrollRows, ui.row({
                 gap = 8,
                 align = "center",
                 padding = 8,
@@ -272,14 +290,16 @@ local function render()
             }))
         end
 
-        if #dealRows == 0 then
-            table.insert(dealRows, ui.label({
+        if dealCount == 0 then
+            table.insert(scrollRows, ui.label({
                 text = "Nenhuma promoção encontrada recentemente.",
                 color = "on_surface_variant",
             }))
         end
+    end
 
-        table.insert(mainChildren, ui.column({ gap = 6 }, dealRows))
+    if showWatchlist or showDeals then
+        table.insert(mainChildren, ui.scroll({ flexGrow = 1, gap = 6 }, scrollRows))
     end
 
     -- Rodapé: Forçar Varredura Agora
@@ -299,7 +319,7 @@ local function render()
         }),
     }))
 
-    panel.render(ui.column({ gap = 12 }, mainChildren))
+    panel.render(ui.column({ gap = 12, flexGrow = 1 }, mainChildren))
 end
 
 function onToggleService()
