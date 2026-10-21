@@ -283,21 +283,14 @@ class Database:
             ]
 
     def seed_defaults(self) -> list[WatchlistItem]:
-        """Cadastra os produtos iniciais de exemplo caso ainda não existam na watchlist."""
+        """Cadastra produto inicial de exemplo apenas se chamado explicitamente via --seed."""
         defaults = [
             {
-                "query": "fifine am8t",
-                "max_price": 285.0,
-                "min_price": round(285.0 * 0.30, 2),
-                "must_contain": "am8t",
-                "exclude_words": "espuma,cabo,suporte avulso,pop filter",
-            },
-            {
-                "query": "fifine sfm1",
-                "max_price": 130.0,
-                "min_price": round(130.0 * 0.30, 2),
-                "must_contain": "sfm1",
-                "exclude_words": "espuma,cabo,suporte avulso,pop filter",
+                "query": "Galaxy S24",
+                "max_price": 2500.0,
+                "min_price": round(2500.0 * 0.30, 2),
+                "must_contain": "s24",
+                "exclude_words": "capinha,pelicula,película,cabo,carregador,capa",
             },
         ]
         existing_queries = {item.query.lower() for item in self.list_watchlist()}

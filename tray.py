@@ -42,8 +42,6 @@ class TrayController:
     def __init__(self) -> None:
         self.settings = load_settings(require_telegram=False)
         self.db = Database(self.settings.db_path)
-        if not self.db.list_watchlist():
-            self.db.seed_defaults()
 
         self._use_systemd = (
             platform.system().lower() == "linux"

@@ -22,11 +22,11 @@ python -m venv .venv
 & "$InstallDir\.venv\Scripts\python.exe" -m pip install --upgrade pip
 & "$InstallDir\.venv\Scripts\pip.exe" install -r requirements.txt
 
-Write-Host "`n[2/4] Configurando arquivo .env e banco de dados inicial..." -ForegroundColor Cyan
+Write-Host "`n[2/4] Configurando arquivo .env e banco de dados..." -ForegroundColor Cyan
 if (-not (Test-Path "$InstallDir\.env")) {
     Copy-Item "$InstallDir\.env.example" "$InstallDir\.env"
 }
-& "$InstallDir\.venv\Scripts\python.exe" "$InstallDir\seed.py"
+& "$InstallDir\.venv\Scripts\python.exe" -c "from config import load_settings; from db import Database; Database(load_settings(False).db_path)"
 
 Write-Host "`n[3/4] Criando launchers silenciosos (sem janela preta do CMD)..." -ForegroundColor Cyan
 $PythonwPath = "$InstallDir\.venv\Scripts\pythonw.exe"
@@ -36,39 +36,39 @@ Set WshShell = CreateObject("WScript.Shell")
 WshShell.CurrentDirectory = "$InstallDir"
 WshShell.Run """$PythonwPath"" ""$InstallDir\main.py"" --tray", 0, False
 "@
-Set-Content -Path "$InstallDir\DealsHunter-Tray.vbs" -Value $TrayVbs -Encoding UTF8
+[System.IO.File]::WriteAllText("$InstallDir\DealsHunter-Tray.vbs", $TrayVbs, [System.Text.Encoding]::Default)
 
 $GuiVbs = @"
 Set WshShell = CreateObject("WScript.Shell")
 WshShell.CurrentDirectory = "$InstallDir"
 WshShell.Run """$PythonwPath"" ""$InstallDir\main.py"" --gui", 0, False
 "@
-Set-Content -Path "$InstallDir\DealsHunter-Panel.vbs" -Value $GuiVbs -Encoding UTF8
+[System.IO.File]::WriteAllText("$InstallDir\DealsHunter-Panel.vbs", $GuiVbs, [System.Text.Encoding]::Default)
 
 Write-Host "`n[4/4] Criando atalhos na Area de Trabalho e Inicializacao do Windows..." -ForegroundColor Cyan
 $WshShell = New-Object -ComObject WScript.Shell
 
-# Atalho na Area de Trabalho (abre o Painel de Controle)
+# Atalho na Area de Trabalho (abre o Painel de Controle direto via pythonw.exe)
 $DesktopPath = [Environment]::GetFolderPath("Desktop")
 $DesktopShortcut = $WshShell.CreateShortcut("$DesktopPath\Deals Hunter.lnk")
-$DesktopShortcut.TargetPath = "wscript.exe"
-$DesktopShortcut.Arguments = """$InstallDir\DealsHunter-Panel.vbs"""
+$DesktopShortcut.TargetPath = $PythonwPath
+$DesktopShortcut.Arguments = """$InstallDir\main.py"" --gui"
 $DesktopShortcut.WorkingDirectory = $InstallDir
 $DesktopShortcut.Description = "Deals Hunter - Painel de Controle"
 $DesktopShortcut.Save()
 
-# Atalho na pasta Startup (inicia na Bandeja do Windows ao ligar o PC)
+# Atalho na pasta Startup (inicia na Bandeja do Windows ao ligar o PC direto via pythonw.exe)
 $StartupPath = [Environment]::GetFolderPath("Startup")
 $StartupShortcut = $WshShell.CreateShortcut("$StartupPath\Deals Hunter Tray.lnk")
-$StartupShortcut.TargetPath = "wscript.exe"
-$StartupShortcut.Arguments = """$InstallDir\DealsHunter-Tray.vbs"""
+$StartupShortcut.TargetPath = $PythonwPath
+$StartupShortcut.Arguments = """$InstallDir\main.py"" --tray"
 $StartupShortcut.WorkingDirectory = $InstallDir
 $StartupShortcut.Description = "Deals Hunter - System Tray Monitor"
 $StartupShortcut.Save()
 
 Write-Host "`nIniciando o Deals Hunter na bandeja do Windows..." -ForegroundColor Green
-Start-Process "wscript.exe" -ArgumentList """$InstallDir\DealsHunter-Tray.vbs"""
-Start-Process "wscript.exe" -ArgumentList """$InstallDir\DealsHunter-Panel.vbs"""
+Start-Process -FilePath $PythonwPath -ArgumentList """$InstallDir\main.py"" --tray" -WorkingDirectory $InstallDir
+Start-Process -FilePath $PythonwPath -ArgumentList """$InstallDir\main.py"" --gui" -WorkingDirectory $InstallDir
 
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host "Instalacao concluida! O Deals Hunter ja esta na bandeja ao lado do relogio." -ForegroundColor Green

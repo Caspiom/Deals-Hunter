@@ -152,6 +152,11 @@ class ControlPanelWindow:
         self.active_tab = "deals"
         self.busy = False
         self.footer_message = ""
+        self._internal_running = False
+        self._worker_loop: asyncio.AbstractEventLoop | None = None
+        self._worker_stop: asyncio.Event | None = None
+        if self.external_worker_state is None and platform.system().lower() != "linux":
+            self._start_internal_worker()
 
         self.root = tk.Tk()
         self.root.title("Deals Hunter")
@@ -465,12 +470,42 @@ class ControlPanelWindow:
 
     # ------------------------------------------------------------------ estado
 
+    def _start_internal_worker(self) -> None:
+        if self._internal_running:
+            return
+        self._internal_running = True
+
+        def _worker_thread() -> None:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            self._worker_loop = loop
+            settings = load_settings(require_telegram=False)
+            db = Database(settings.db_path)
+            app = DealHunterApp(settings=settings, db=db)
+            self._worker_stop = app.stop_event
+            try:
+                loop.run_until_complete(app.run())
+            except Exception:
+                pass
+            finally:
+                loop.close()
+                self._internal_running = False
+
+        threading.Thread(target=_worker_thread, daemon=True).start()
+
+    def _stop_internal_worker(self) -> None:
+        if not self._internal_running:
+            return
+        if self._worker_loop and self._worker_stop:
+            self._worker_loop.call_soon_threadsafe(self._worker_stop.set)
+        self._internal_running = False
+
     def _is_running(self) -> bool:
         if self.external_worker_state is not None:
             return self.external_worker_state()
         if platform.system().lower() == "linux":
             return is_service_active()
-        return False
+        return self._internal_running
 
     def _toggle_running(self) -> None:
         if self.external_worker_toggle is not None:
@@ -478,6 +513,11 @@ class ControlPanelWindow:
         elif platform.system().lower() == "linux":
             target = "stop" if is_service_active() else "start"
             subprocess.run(["systemctl", "--user", target, SERVICE_NAME], check=False)
+        else:
+            if self._internal_running:
+                self._stop_internal_worker()
+            else:
+                self._start_internal_worker()
         self.refresh_ui()
 
     def _select_tab(self, tab_id: str) -> None:

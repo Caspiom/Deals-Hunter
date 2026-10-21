@@ -256,10 +256,6 @@ def main() -> None:
             )
         return
 
-    if not db.list_watchlist():
-        logger.info("Watchlist vazia detectada. Inserindo itens de seed inicial...")
-        db.seed_defaults()
-
     app = DealHunterApp(settings=settings, db=db)
 
     if args.dry_run:

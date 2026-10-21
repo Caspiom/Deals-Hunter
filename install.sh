@@ -62,13 +62,13 @@ else
     .venv/bin/pip install -r requirements.txt
 fi
 
-# 3. Criar .env (se não existir) e popular banco inicial
+# 3. Criar .env (se não existir) e inicializar banco de dados limpo
 echo -e "\n${BLUE}[2/5] Configurando banco de dados e arquivo .env...${NC}"
 if [ ! -f "$INSTALL_DIR/.env" ]; then
     cp "$INSTALL_DIR/.env.example" "$INSTALL_DIR/.env"
     echo -e "${GREEN}✓${NC} Arquivo .env criado (Notificações direto no PC ativadas por padrão)."
 fi
-"$INSTALL_DIR/.venv/bin/python" "$INSTALL_DIR/seed.py"
+"$INSTALL_DIR/.venv/bin/python" -c "from config import load_settings; from db import Database; Database(load_settings(False).db_path)"
 
 # 4. Instalar Serviço Systemd User (deal-hunter.service)
 echo -e "\n${BLUE}[3/5] Configurando serviço em background (systemd --user)...${NC}"
