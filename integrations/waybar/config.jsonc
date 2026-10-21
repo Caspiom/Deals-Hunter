@@ -1,0 +1,11 @@
+// Adicione este bloco ao seu ~/.config/waybar/config.jsonc:
+{
+    "custom/deals-hunter": {
+        "exec": "__INSTALL_DIR__/.venv/bin/python __INSTALL_DIR__/integrations/waybar/waybar_module.py",
+        "return-type": "json",
+        "interval": 5,
+        "on-click": "__INSTALL_DIR__/.venv/bin/python __INSTALL_DIR__/main.py --gui",
+        "on-click-right": "__INSTALL_DIR__/.venv/bin/python __INSTALL_DIR__/ctl.py toggle-service",
+        "on-click-middle": "__INSTALL_DIR__/.venv/bin/python __INSTALL_DIR__/ctl.py check-now"
+    }
+}

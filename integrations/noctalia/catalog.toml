@@ -1,0 +1,12 @@
+[[plugin]]
+id = "gappy/deal-hunter"
+name = "Deal Hunter"
+version = "1.0.0"
+updated_at = 1792596800
+added_at = 1792596800
+author = "gappy"
+license = "MIT"
+icon = "tag"
+description = "Controla o Bot Monitor de Promoções na barra do Noctalia (Ligar/Desligar e escolher o produto pesquisado)."
+plugin_api = 24
+tags = ["bar", "panel", "service", "utility"]

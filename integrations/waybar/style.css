@@ -1,0 +1,17 @@
+/* Adicione ao seu ~/.config/waybar/style.css */
+#custom-deals-hunter {
+    padding: 0 10px;
+    margin: 0 4px;
+    border-radius: 8px;
+    font-weight: bold;
+}
+
+#custom-deals-hunter.active {
+    background-color: rgba(166, 227, 161, 0.2);
+    color: #a6e3a1;
+}
+
+#custom-deals-hunter.inactive {
+    background-color: rgba(108, 112, 134, 0.2);
+    color: #a6adc8;
+}

@@ -1,0 +1,36 @@
+id = "gappy/deal-hunter"
+name = "Deal Hunter"
+version = "1.0.0"
+plugin_api = 24
+author = "gappy"
+license = "MIT"
+icon = "tag"
+description = "Controla o Bot Monitor de Promoções na barra do Noctalia (Ligar/Desligar e escolher o produto pesquisado)."
+tags = ["bar", "panel", "service", "utility"]
+dependencies = ["python3"]
+
+[[setting]]
+key = "show_query_in_bar"
+type = "bool"
+label_key = "settings.show_query"
+description_key = "settings.show_query_desc"
+default = true
+
+[[service]]
+id = "controller"
+entry = "service.luau"
+
+[[widget]]
+id = "status"
+entry = "bar.luau"
+
+[[panel]]
+id = "panel"
+entry = "panel.luau"
+width = 410
+height = 460
+placement = "attached"
+position = "auto"
+open_near_click = true
+keyboard_focus = "on_demand"
+dismiss_on_outside_click = true

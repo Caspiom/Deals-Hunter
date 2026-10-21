@@ -1,0 +1,7 @@
+{
+  "settings": {
+    "show_query": "Show product name in bar",
+    "show_query_desc": "Display the currently monitored product name next to the icon in the status bar."
+  },
+  "title": "Deal Hunter Bot"
+}

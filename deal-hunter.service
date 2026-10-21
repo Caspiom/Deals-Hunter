@@ -1,0 +1,17 @@
+[Unit]
+Description=Deal Hunter - Bot Monitor de Promoções (Telegram)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/gappy/Documents/projetos/bot-promo
+EnvironmentFile=/home/gappy/Documents/projetos/bot-promo/.env
+ExecStart=/home/gappy/Documents/projetos/bot-promo/.venv/bin/python /home/gappy/Documents/projetos/bot-promo/main.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

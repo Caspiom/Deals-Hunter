@@ -1,0 +1,29 @@
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Local secrets & SQLite database
+.env
+*.db
+*.db-shm
+*.db-wal
+
+# Generated local configs
+integrations/waybar/waybar-ready.jsonc
+DealsHunter-Tray.vbs
+DealsHunter-Panel.vbs
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
