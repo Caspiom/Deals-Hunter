@@ -136,7 +136,7 @@ class ControlPanelWindow:
             relief=tk.FLAT,
         )
         self.entry_query.pack(fill=tk.X, ipady=6)
-        self.entry_query.insert(0, "fifine am8t")
+        self.entry_query.insert(0, "Galaxy S24")
         self.entry_query.bind("<Return>", lambda _e: self._on_set_exclusive())
 
         right_input = tk.Frame(inputs_row, bg=self.BG_CARD, width=130)
@@ -161,7 +161,7 @@ class ControlPanelWindow:
             relief=tk.FLAT,
         )
         self.entry_price.pack(fill=tk.X, ipady=6)
-        self.entry_price.insert(0, "285")
+        self.entry_price.insert(0, "2500")
         self.entry_price.bind("<Return>", lambda _e: self._on_set_exclusive())
 
         btn_row = tk.Frame(search_frame, bg=self.BG_CARD)

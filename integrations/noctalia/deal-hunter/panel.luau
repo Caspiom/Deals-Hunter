@@ -160,7 +160,7 @@ local function render()
                     ui.input({
                         key = "query-input-" .. tostring(inputSeed),
                         value = typedQuery,
-                        placeholder = "Ex: fifine am8t",
+                        placeholder = "Ex: Galaxy S24",
                         onChange = "onQueryChange",
                         onSubmit = "onQuerySubmit",
                         enabled = not busy,
@@ -176,7 +176,7 @@ local function render()
                     ui.input({
                         key = "price-input-" .. tostring(inputSeed),
                         value = typedPrice,
-                        placeholder = "Ex: 285",
+                        placeholder = "Ex: 2500",
                         onChange = "onPriceChange",
                         onSubmit = "onPriceSubmit",
                         enabled = not busy,

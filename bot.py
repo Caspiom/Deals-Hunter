@@ -239,8 +239,8 @@ class TelegramBot:
             "🤖 *Deal Hunter Bot — Comandos Disponíveis*\n\n"
             "➕ *Adicionar produto:*\n"
             "`/add <termo> | <preco_max> | [palavras_negativas]`\n"
-            "• _Ex. simples:_ `/add fifine am8t | 285`\n"
-            "• _Ex. avançado:_ `/add fifine am8t | 285 | espuma,pop filter`\n\n"
+            "• _Ex. simples:_ `/add galaxy s24 | 2500`\n"
+            "• _Ex. avançado:_ `/add galaxy s24 | 2500 | capa,pelicula`\n\n"
             "📋 *Listar monitorados:*\n"
             "`/list` — Mostra todos os itens, IDs, faixa de preço e filtros.\n\n"
             "🗑️ *Remover item:*\n"
@@ -259,8 +259,8 @@ class TelegramBot:
                 "Use:\n"
                 "`/add <termo> | <preco_max> | [palavras_negativas]`\n\n"
                 "*Exemplos:*\n"
-                "• `/add fifine am8t | 285`\n"
-                "• `/add fifine am8t | 285 | espuma,pop filter`"
+                "• `/add galaxy s24 | 2500`\n"
+                "• `/add galaxy s24 | 2500 | capa,pelicula`"
             )
             return
 
@@ -274,7 +274,7 @@ class TelegramBot:
         if not query or max_price is None or max_price <= 0:
             await self.send_message(
                 "❌ *Erro:* Informe um termo válido e um preço máximo numérico maior que zero.\n"
-                "Exemplo: `/add fifine am8t | 285`"
+                "Exemplo: `/add galaxy s24 | 2500`"
             )
             return
 
