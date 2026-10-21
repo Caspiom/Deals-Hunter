@@ -10,6 +10,10 @@
   <a href="#-english">🇺🇸 English</a>
 </p>
 
+<p align="center">
+  <img src="assets/panel-preview.png" alt="Deals Hunter Control Panel Preview" width="420" />
+</p>
+
 ---
 
 ## 🇧🇷 Português
