@@ -108,30 +108,61 @@ class ControlPanelWindow:
         )
         self.btn_toggle_service.pack(side=tk.RIGHT)
 
-        # Seção: Escolher / Alterar Produto Pesquisado
+        # Seção: Escolher / Alterar Produto Pesquisado (Campos separados para Nome e Valor)
         search_frame = tk.Frame(self.root, bg=self.BG_CARD, padx=14, pady=12)
         search_frame.pack(fill=tk.X, padx=14, pady=6)
 
+        inputs_row = tk.Frame(search_frame, bg=self.BG_CARD)
+        inputs_row.pack(fill=tk.X, pady=(0, 8))
+
+        left_input = tk.Frame(inputs_row, bg=self.BG_CARD)
+        left_input.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 6))
+
         tk.Label(
-            search_frame,
-            text="🎯 Escolher ou Adicionar Produto Pesquisado (Nome | Preço Máx):",
+            left_input,
+            text="🎯 Nome do Produto:",
             font=("Sans", 10, "bold"),
             bg=self.BG_CARD,
             fg=self.FG_TEXT,
             anchor="w",
-        ).pack(fill=tk.X)
+        ).pack(fill=tk.X, pady=(0, 4))
 
         self.entry_query = tk.Entry(
-            search_frame,
+            left_input,
             font=("Sans", 11),
             bg="#181825",
             fg=self.FG_TEXT,
             insertbackground=self.FG_TEXT,
             relief=tk.FLAT,
         )
-        self.entry_query.pack(fill=tk.X, pady=8, ipady=6)
-        self.entry_query.insert(0, "fifine am8t | 285")
+        self.entry_query.pack(fill=tk.X, ipady=6)
+        self.entry_query.insert(0, "fifine am8t")
         self.entry_query.bind("<Return>", lambda _e: self._on_set_exclusive())
+
+        right_input = tk.Frame(inputs_row, bg=self.BG_CARD, width=130)
+        right_input.pack(side=tk.RIGHT, fill=tk.Y)
+
+        tk.Label(
+            right_input,
+            text="💰 Valor Máx (R$):",
+            font=("Sans", 10, "bold"),
+            bg=self.BG_CARD,
+            fg=self.FG_TEXT,
+            anchor="w",
+        ).pack(fill=tk.X, pady=(0, 4))
+
+        self.entry_price = tk.Entry(
+            right_input,
+            font=("Sans", 11),
+            width=12,
+            bg="#181825",
+            fg=self.FG_TEXT,
+            insertbackground=self.FG_TEXT,
+            relief=tk.FLAT,
+        )
+        self.entry_price.pack(fill=tk.X, ipady=6)
+        self.entry_price.insert(0, "285")
+        self.entry_price.bind("<Return>", lambda _e: self._on_set_exclusive())
 
         btn_row = tk.Frame(search_frame, bg=self.BG_CARD)
         btn_row.pack(fill=tk.X)
@@ -361,14 +392,23 @@ class ControlPanelWindow:
                 command=lambda i=item.id: self._on_delete_item(i),
             ).pack(side=tk.LEFT, padx=(2, 0))
 
+    def _build_query_payload(self) -> str:
+        q = self.entry_query.get().strip()
+        p = self.entry_price.get().strip()
+        if not q:
+            return ""
+        if p and "|" not in q:
+            return f"{q} | {p}"
+        return q
+
     def _on_set_exclusive(self) -> None:
-        raw = self.entry_query.get().strip()
+        raw = self._build_query_payload()
         if raw:
             set_primary_query(self.db, raw, exclusive=True)
             self.refresh_ui()
 
     def _on_add_item(self) -> None:
-        raw = self.entry_query.get().strip()
+        raw = self._build_query_payload()
         if raw:
             set_primary_query(self.db, raw, exclusive=False)
             self.refresh_ui()

@@ -1,6 +1,7 @@
 --!nonstrict
 
 local typedQuery = ""
+local typedPrice = ""
 local inputSeed = 0
 
 local function sendCmd(action, arg)
@@ -11,6 +12,28 @@ local function sendCmd(action, arg)
     })
 end
 
+local function buildCombinedPayload()
+    local q = noctalia.string.trim(tostring(typedQuery or ""))
+    local p = noctalia.string.trim(tostring(typedPrice or ""))
+    if q == "" then
+        return ""
+    end
+    if p ~= "" and not q:find("|", 1, true) then
+        return q .. " | " .. p
+    end
+    return q
+end
+
+local function submitProduct(actionName)
+    local payload = buildCombinedPayload()
+    if payload ~= "" then
+        sendCmd(actionName, payload)
+        typedQuery = ""
+        typedPrice = ""
+        inputSeed += 1
+    end
+end
+
 local function render()
     local status = noctalia.state.get("status") or {}
     local busy = noctalia.state.get("busy") == true
@@ -18,7 +41,7 @@ local function render()
     local items = type(status.items) == "table" and status.items or {}
 
     local itemRows = {}
-    for idx, item in ipairs(items) do
+    for _idx, item in ipairs(items) do
         local isAct = item.active == true
         local itemId = tostring(item.id)
         local priceStr = string.format("<= R$ %.0f", tonumber(item.max_price) or 0)
@@ -124,21 +147,41 @@ local function render()
             }),
         }),
 
-        -- Campo para digitar o nome do que vai ser pesquisado
-        ui.column({ gap = 6 }, {
-            ui.label({
-                text = "Escolher / Alterar Produto Pesquisado:",
-                fontSize = 12,
-                fontWeight = "medium",
-                color = "on_surface_variant",
-            }),
-            ui.input({
-                key = "query-input-" .. tostring(inputSeed),
-                value = typedQuery,
-                placeholder = "Ex: fifine am8t | 285",
-                onChange = "onQueryChange",
-                onSubmit = "onQuerySubmit",
-                enabled = not busy,
+        -- Campos separados para Nome do Produto e Valor Máximo
+        ui.column({ gap = 8 }, {
+            ui.row({ gap = 8, align = "center" }, {
+                ui.column({ gap = 4, flexGrow = 2 }, {
+                    ui.label({
+                        text = "Nome do Produto:",
+                        fontSize = 12,
+                        fontWeight = "medium",
+                        color = "on_surface_variant",
+                    }),
+                    ui.input({
+                        key = "query-input-" .. tostring(inputSeed),
+                        value = typedQuery,
+                        placeholder = "Ex: fifine am8t",
+                        onChange = "onQueryChange",
+                        onSubmit = "onQuerySubmit",
+                        enabled = not busy,
+                    }),
+                }),
+                ui.column({ gap = 4, flexGrow = 1 }, {
+                    ui.label({
+                        text = "Valor Máx (R$):",
+                        fontSize = 12,
+                        fontWeight = "medium",
+                        color = "on_surface_variant",
+                    }),
+                    ui.input({
+                        key = "price-input-" .. tostring(inputSeed),
+                        value = typedPrice,
+                        placeholder = "Ex: 285",
+                        onChange = "onPriceChange",
+                        onSubmit = "onPriceSubmit",
+                        enabled = not busy,
+                    }),
+                }),
             }),
             ui.row({ gap = 8, justify = "space_between" }, {
                 ui.button({
@@ -194,32 +237,30 @@ function onQueryChange(val)
     typedQuery = tostring(val or "")
 end
 
+function onPriceChange(val)
+    typedPrice = tostring(val or "")
+end
+
 function onQuerySubmit(val)
-    local q = tostring(val or typedQuery)
-    if q ~= "" then
-        sendCmd("set-query", q)
-        typedQuery = ""
-        inputSeed += 1
-        render()
-    end
+    typedQuery = tostring(val or typedQuery)
+    submitProduct("set-query")
+    render()
+end
+
+function onPriceSubmit(val)
+    typedPrice = tostring(val or typedPrice)
+    submitProduct("set-query")
+    render()
 end
 
 function onSetExclusiveQuery()
-    if typedQuery ~= "" then
-        sendCmd("set-query", typedQuery)
-        typedQuery = ""
-        inputSeed += 1
-        render()
-    end
+    submitProduct("set-query")
+    render()
 end
 
 function onAddQuery()
-    if typedQuery ~= "" then
-        sendCmd("add-item", typedQuery)
-        typedQuery = ""
-        inputSeed += 1
-        render()
-    end
+    submitProduct("add-item")
+    render()
 end
 
 function onCheckNow()
