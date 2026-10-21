@@ -34,6 +34,18 @@ class WatchlistItem:
         return [w.strip() for w in self.exclude_words.split(",") if w.strip()]
 
 
+@dataclass(frozen=True)
+class SeenDealRecord:
+    deal_id: str
+    watchlist_id: int | None
+    price: float
+    title: str
+    url: str
+    store: str
+    notif_id: int
+    found_at: str
+
+
 class Database:
     """Gerenciador de persistência SQLite para watchlist e ofertas já vistas."""
 
@@ -77,11 +89,29 @@ class Database:
                     deal_id TEXT PRIMARY KEY,
                     watchlist_id INTEGER,
                     price REAL,
+                    title TEXT DEFAULT '',
+                    url TEXT DEFAULT '',
+                    store TEXT DEFAULT '',
+                    notif_id INTEGER DEFAULT 0,
                     found_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (watchlist_id) REFERENCES watchlist (id) ON DELETE SET NULL
                 );
                 """
             )
+            # Migração leve para bancos existentes
+            existing_cols = {
+                row["name"]
+                for row in conn.execute("PRAGMA table_info(seen_deals);").fetchall()
+            }
+            for col_name, col_def in [
+                ("title", "TEXT DEFAULT ''"),
+                ("url", "TEXT DEFAULT ''"),
+                ("store", "TEXT DEFAULT ''"),
+                ("notif_id", "INTEGER DEFAULT 0"),
+            ]:
+                if col_name not in existing_cols:
+                    conn.execute(f"ALTER TABLE seen_deals ADD COLUMN {col_name} {col_def};")
+
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_watchlist_active ON watchlist(active);"
             )
@@ -178,16 +208,68 @@ class Database:
             ).fetchone()
             return row is not None
 
-    def mark_deal_seen(self, deal_id: str, watchlist_id: int, price: float) -> None:
+    def mark_deal_seen(
+        self,
+        deal_id: str,
+        watchlist_id: int,
+        price: float,
+        title: str = "",
+        url: str = "",
+        store: str = "",
+        notif_id: int = 0,
+    ) -> None:
         now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         with self._connect() as conn:
             conn.execute(
                 """
-                INSERT OR IGNORE INTO seen_deals (deal_id, watchlist_id, price, found_at)
-                VALUES (?, ?, ?, ?)
+                INSERT OR REPLACE INTO seen_deals
+                    (deal_id, watchlist_id, price, title, url, store, notif_id, found_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (deal_id, watchlist_id, round(float(price), 2), now_iso),
+                (
+                    deal_id,
+                    watchlist_id,
+                    round(float(price), 2),
+                    title,
+                    url,
+                    store,
+                    int(notif_id or 0),
+                    now_iso,
+                ),
             )
+
+    def get_url_by_notif_id(self, notif_id: int) -> str | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT url FROM seen_deals WHERE notif_id = ? AND url != '' LIMIT 1",
+                (notif_id,),
+            ).fetchone()
+            return str(row["url"]) if row else None
+
+    def list_recent_deals(self, limit: int = 8) -> list[SeenDealRecord]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT * FROM seen_deals
+                WHERE url != ''
+                ORDER BY found_at DESC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+            return [
+                SeenDealRecord(
+                    deal_id=str(r["deal_id"]),
+                    watchlist_id=int(r["watchlist_id"]) if r["watchlist_id"] is not None else None,
+                    price=float(r["price"] or 0.0),
+                    title=str(r["title"] or ""),
+                    url=str(r["url"] or ""),
+                    store=str(r["store"] or ""),
+                    notif_id=int(r["notif_id"] or 0),
+                    found_at=str(r["found_at"] or ""),
+                )
+                for r in rows
+            ]
 
     def seed_defaults(self) -> list[WatchlistItem]:
         """Cadastra os produtos iniciais de exemplo caso ainda não existam na watchlist."""

@@ -10,7 +10,7 @@ from pathlib import Path
 from config import load_settings
 from db import Database
 from main import DealHunterApp
-from notifier import send_desktop_notification
+from notifier import open_url_in_browser, send_desktop_notification
 
 BASE_DIR = Path(__file__).resolve().parent
 SERVICE_NAME = "deal-hunter.service"
@@ -36,6 +36,7 @@ def build_status_dict(db: Database, message: str = "") -> dict:
     else:
         summary = f"{active_queries[0]} +{len(active_queries) - 1}"
 
+    recent = db.list_recent_deals(limit=6)
     return {
         "service_active": running,
         "summary": summary,
@@ -50,6 +51,15 @@ def build_status_dict(db: Database, message: str = "") -> dict:
                 "active": it.active,
             }
             for it in items
+        ],
+        "recent_deals": [
+            {
+                "title": d.title,
+                "price": d.price,
+                "url": d.url,
+                "store": d.store,
+            }
+            for d in recent
         ],
     }
 
@@ -187,11 +197,16 @@ def main() -> None:
         except Exception as exc:
             msg = f"Erro na busca: {exc}"
     elif cmd == "test-notify":
-        ok = send_desktop_notification(
-            title="🚨 Deals Hunter — Teste de Alerta",
-            body="Notificações nativas direto no PC estão funcionando perfeitamente!",
+        ok, _nid = send_desktop_notification(
+            title="🚨 Deals Hunter — Teste Clicável",
+            body="👆 Clique nesta notificação para testar a abertura no navegador!",
+            url="https://github.com/Caspiom/Deals-Hunter",
         )
         msg = "Notificação de teste enviada ao PC!" if ok else "Falha ao enviar notificação no PC."
+    elif cmd == "open-url":
+        if len(sys.argv) > 2:
+            open_url_in_browser(sys.argv[2].strip())
+            msg = "Oferta aberta no navegador!"
 
     print(json.dumps(build_status_dict(db, message=msg), ensure_ascii=False))
 

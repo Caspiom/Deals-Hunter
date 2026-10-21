@@ -10,7 +10,7 @@ import sys
 from bot import TelegramBot, format_deal_notification
 from config import Settings, load_settings, setup_logging
 from db import Database
-from notifier import send_deal_desktop_alert
+from notifier import send_deal_desktop_alert, start_linux_notification_click_listener
 from scrapers import DealEngine
 
 logger = logging.getLogger("deal_hunter.main")
@@ -76,10 +76,11 @@ class DealHunterApp:
                             continue
 
                         delivered = False
+                        notif_id = 0
 
-                        # 1. Canal Primário: Notificação Nativa Direto no PC
+                        # 1. Canal Primário: Notificação Nativa Direto no PC (Clicável!)
                         if self.settings.desktop_notifications:
-                            pc_ok = send_deal_desktop_alert(
+                            pc_ok, notif_id = send_deal_desktop_alert(
                                 deal,
                                 item,
                                 auto_open_browser=self.settings.auto_open_browser,
@@ -94,7 +95,15 @@ class DealHunterApp:
                                 delivered = True
 
                         if delivered:
-                            self.db.mark_deal_seen(deal.deal_id, item.id, deal.price)
+                            self.db.mark_deal_seen(
+                                deal.deal_id,
+                                item.id,
+                                deal.price,
+                                title=deal.title,
+                                url=deal.url,
+                                store=deal.store or deal.provider,
+                                notif_id=notif_id,
+                            )
                             new_alerts_count += 1
 
                     # Pequena pausa entre produtos para evitar rate-limiting
@@ -147,6 +156,9 @@ class DealHunterApp:
                 loop.add_signal_handler(sig, self.stop_event.set)
             except NotImplementedError:
                 pass
+
+        if self.settings.desktop_notifications:
+            start_linux_notification_click_listener(self.db)
 
         tasks: list[asyncio.Task] = []
         worker_task = asyncio.create_task(

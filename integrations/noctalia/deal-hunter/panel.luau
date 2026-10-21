@@ -39,14 +39,23 @@ local function render()
     local busy = noctalia.state.get("busy") == true
     local running = status.service_active == true
     local items = type(status.items) == "table" and status.items or {}
+    local recentDeals = type(status.recent_deals) == "table" and status.recent_deals or {}
 
-    local itemRows = {}
+    local scrollChildren = {}
+
+    table.insert(scrollChildren, ui.label({
+        text = "Produtos na Watchlist:",
+        fontSize = 12,
+        fontWeight = "medium",
+        color = "on_surface_variant",
+    }))
+
     for _idx, item in ipairs(items) do
         local isAct = item.active == true
         local itemId = tostring(item.id)
         local priceStr = string.format("<= R$ %.0f", tonumber(item.max_price) or 0)
 
-        table.insert(itemRows, ui.row({
+        table.insert(scrollChildren, ui.row({
             gap = 8,
             align = "center",
             padding = 8,
@@ -91,11 +100,63 @@ local function render()
         }))
     end
 
-    if #itemRows == 0 then
-        table.insert(itemRows, ui.label({
+    if #items == 0 then
+        table.insert(scrollChildren, ui.label({
             text = "Nenhum produto cadastrado.",
             color = "on_surface_variant",
         }))
+    end
+
+    if #recentDeals > 0 then
+        table.insert(scrollChildren, ui.label({
+            text = "Últimas Ofertas Encontradas (Clique em Abrir):",
+            fontSize = 12,
+            fontWeight = "medium",
+            color = "on_surface_variant",
+        }))
+
+        for _i, deal in ipairs(recentDeals) do
+            local dealUrl = tostring(deal.url or "")
+            local shortTitle = tostring(deal.title or "Oferta")
+            if #shortTitle > 34 then
+                shortTitle = shortTitle:sub(1, 34) .. "…"
+            end
+            local priceInfo = string.format(
+                "R$ %.2f • %s",
+                tonumber(deal.price) or 0,
+                tostring(deal.store or "Loja")
+            )
+
+            table.insert(scrollChildren, ui.row({
+                gap = 8,
+                align = "center",
+                padding = 8,
+                fill = "surface_variant/0.4",
+                radius = 8,
+            }, {
+                ui.column({ gap = 2, flexGrow = 1 }, {
+                    ui.label({
+                        text = shortTitle,
+                        fontSize = 12,
+                        fontWeight = "bold",
+                        color = "on_surface",
+                    }),
+                    ui.label({
+                        text = priceInfo,
+                        fontSize = 11,
+                        color = "primary",
+                    }),
+                }),
+                ui.button({
+                    text = "Abrir",
+                    glyph = "external-link",
+                    variant = "primary",
+                    onClick = function()
+                        sendCmd("open-url", dealUrl)
+                    end,
+                }),
+            }))
+        end
     end
 
     panel.render(ui.column({ gap = 12, flexGrow = 1 }, {
@@ -201,14 +262,8 @@ local function render()
             }),
         }),
 
-        -- Lista de produtos na Watchlist
-        ui.label({
-            text = "Produtos na Watchlist:",
-            fontSize = 12,
-            fontWeight = "medium",
-            color = "on_surface_variant",
-        }),
-        ui.scroll({ flexGrow = 1, gap = 8 }, itemRows),
+        -- Lista rolável (Watchlist + Últimas Ofertas Encontradas)
+        ui.scroll({ flexGrow = 1, gap = 8 }, scrollChildren),
 
         -- Rodapé: Forçar Varredura Agora
         ui.row({ gap = 8, align = "center", justify = "space_between" }, {
