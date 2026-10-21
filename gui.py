@@ -5,7 +5,7 @@ import platform
 import subprocess
 import threading
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox
 from typing import Callable
 
 from config import load_settings, update_env_values
@@ -18,7 +18,7 @@ from ctl import (
 )
 from db import Database
 from main import DealHunterApp
-from notifier import send_desktop_notification
+from notifier import open_url_in_browser, send_desktop_notification
 
 
 class ControlPanelWindow:
@@ -42,11 +42,13 @@ class ControlPanelWindow:
         self.settings = load_settings(require_telegram=False)
         self.db = Database(self.settings.db_path)
 
+        self.show_watchlist = False
+        self.show_deals = False
+
         self.root = tk.Tk()
         self.root.title("Deals Hunter — Painel de Controle")
-        self.root.geometry("520x650")
         self.root.configure(bg=self.BG_MAIN)
-        self.root.minsize(480, 600)
+        self.root.resizable(False, False)
 
         self._build_ui()
         self.refresh_ui()
@@ -68,8 +70,8 @@ class ControlPanelWindow:
 
     def _build_ui(self) -> None:
         # Cabeçalho + Status do Bot
-        header_frame = tk.Frame(self.root, bg=self.BG_CARD, padx=14, pady=12)
-        header_frame.pack(fill=tk.X, padx=14, pady=(14, 8))
+        header_frame = tk.Frame(self.root, bg=self.BG_CARD, padx=14, pady=12, width=480)
+        header_frame.pack(fill=tk.X, padx=14, pady=(14, 6))
 
         left_header = tk.Frame(header_frame, bg=self.BG_CARD)
         left_header.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -77,7 +79,7 @@ class ControlPanelWindow:
         self.lbl_status = tk.Label(
             left_header,
             text="🟢 Bot Monitorando",
-            font=("Sans", 13, "bold"),
+            font=("Sans", 12, "bold"),
             bg=self.BG_CARD,
             fg=self.GREEN,
             anchor="w",
@@ -191,35 +193,51 @@ class ControlPanelWindow:
             command=self._on_add_item,
         ).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(4, 0))
 
-        # Seção: Lista de Produtos (Watchlist)
-        list_frame = tk.Frame(self.root, bg=self.BG_CARD, padx=14, pady=10)
-        list_frame.pack(fill=tk.BOTH, expand=True, padx=14, pady=6)
+        # Linha de Botões Expansíveis: Watchlist | Promoções achadas | Buscar Agora
+        expand_row = tk.Frame(self.root, bg=self.BG_MAIN)
+        expand_row.pack(fill=tk.X, padx=14, pady=6)
 
-        top_list_row = tk.Frame(list_frame, bg=self.BG_CARD)
-        top_list_row.pack(fill=tk.X, pady=(0, 6))
-
-        tk.Label(
-            top_list_row,
-            text="📋 Produtos Cadastrados (Watchlist):",
+        self.btn_expand_watchlist = tk.Button(
+            expand_row,
+            text="▾ Watchlist (0)",
             font=("Sans", 10, "bold"),
-            bg=self.BG_CARD,
+            bg="#45475a",
             fg=self.FG_TEXT,
-        ).pack(side=tk.LEFT)
+            relief=tk.FLAT,
+            padx=10,
+            pady=6,
+            command=self._toggle_watchlist_section,
+        )
+        self.btn_expand_watchlist.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(0, 4))
+
+        self.btn_expand_deals = tk.Button(
+            expand_row,
+            text="▾ Promoções achadas (0)",
+            font=("Sans", 10, "bold"),
+            bg="#45475a",
+            fg=self.FG_TEXT,
+            relief=tk.FLAT,
+            padx=10,
+            pady=6,
+            command=self._toggle_deals_section,
+        )
+        self.btn_expand_deals.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(4, 4))
 
         tk.Button(
-            top_list_row,
+            expand_row,
             text="🔍 Buscar Agora",
-            font=("Sans", 9, "bold"),
+            font=("Sans", 10, "bold"),
             bg=self.GREEN,
             fg="#11111b",
             relief=tk.FLAT,
-            padx=8,
-            pady=2,
+            padx=10,
+            pady=6,
             command=self._on_check_now,
-        ).pack(side=tk.RIGHT)
+        ).pack(side=tk.RIGHT, padx=(4, 0))
 
-        self.items_container = tk.Frame(list_frame, bg=self.BG_CARD)
-        self.items_container.pack(fill=tk.BOTH, expand=True)
+        # Containers Expansíveis (ocultos por padrão, só aparecem ao clicar)
+        self.watchlist_frame = tk.Frame(self.root, bg=self.BG_CARD, padx=12, pady=10)
+        self.deals_frame = tk.Frame(self.root, bg=self.BG_CARD, padx=12, pady=10)
 
         # Seção: Notificações no PC & Telegram Opcional (@BotFather)
         cfg_frame = tk.Frame(self.root, bg=self.BG_CARD, padx=14, pady=10)
@@ -317,9 +335,18 @@ class ControlPanelWindow:
             command=self._on_save_settings,
         ).pack(fill=tk.X, pady=(6, 0))
 
+    def _toggle_watchlist_section(self) -> None:
+        self.show_watchlist = not self.show_watchlist
+        self.refresh_ui()
+
+    def _toggle_deals_section(self) -> None:
+        self.show_deals = not self.show_deals
+        self.refresh_ui()
+
     def refresh_ui(self) -> None:
         running = self._is_running()
         items = self.db.list_watchlist()
+        recent_deals = self.db.list_recent_deals(limit=6)
         active_queries = [it.query for it in items if it.active]
         summary = ", ".join(active_queries) if active_queries else "Nenhum produto ativo"
 
@@ -332,65 +359,128 @@ class ControlPanelWindow:
 
         self.lbl_summary.config(text=f"Pesquisando: {summary}")
 
-        for child in self.items_container.winfo_children():
+        wl_arrow = "▴" if self.show_watchlist else "▾"
+        self.btn_expand_watchlist.config(
+            text=f"{wl_arrow} Watchlist ({len(items)})",
+            bg=self.ACCENT if self.show_watchlist else "#45475a",
+            fg="#11111b" if self.show_watchlist else self.FG_TEXT,
+        )
+
+        deals_arrow = "▴" if self.show_deals else "▾"
+        self.btn_expand_deals.config(
+            text=f"{deals_arrow} Promoções achadas ({len(recent_deals)})",
+            bg=self.ACCENT if self.show_deals else "#45475a",
+            fg="#11111b" if self.show_deals else self.FG_TEXT,
+        )
+
+        # Atualiza container Watchlist
+        for child in self.watchlist_frame.winfo_children():
             child.destroy()
 
-        if not items:
-            tk.Label(
-                self.items_container,
-                text="Nenhum produto na lista. Adicione um acima!",
-                bg=self.BG_CARD,
-                fg=self.FG_MUTED,
-            ).pack(pady=12)
-            return
+        if self.show_watchlist:
+            self.watchlist_frame.pack(fill=tk.X, padx=14, pady=4)
+            if not items:
+                tk.Label(
+                    self.watchlist_frame,
+                    text="Nenhum produto na Watchlist.",
+                    bg=self.BG_CARD,
+                    fg=self.FG_MUTED,
+                ).pack(pady=6)
+            else:
+                for item in items:
+                    row = tk.Frame(self.watchlist_frame, bg="#181825", padx=8, pady=5)
+                    row.pack(fill=tk.X, pady=2)
 
-        for item in items:
-            row = tk.Frame(self.items_container, bg="#181825", padx=8, pady=6)
-            row.pack(fill=tk.X, pady=3)
+                    badge = "🟢" if item.active else "⚪"
+                    tk.Label(
+                        row,
+                        text=f"{badge} {item.query}  (<= R$ {item.max_price:.0f})",
+                        font=("Sans", 10, "bold" if item.active else "normal"),
+                        bg="#181825",
+                        fg=self.GREEN if item.active else self.FG_MUTED,
+                        anchor="w",
+                    ).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-            badge = "🟢" if item.active else "⚪"
-            lbl = tk.Label(
-                row,
-                text=f"{badge} {item.query}  (<= R$ {item.max_price:.0f})",
-                font=("Sans", 10, "bold" if item.active else "normal"),
-                bg="#181825",
-                fg=self.GREEN if item.active else self.FG_MUTED,
-                anchor="w",
-            )
-            lbl.pack(side=tk.LEFT, fill=tk.X, expand=True)
+                    tk.Button(
+                        row,
+                        text="Focar",
+                        font=("Sans", 8, "bold"),
+                        bg=self.ACCENT,
+                        fg="#11111b",
+                        relief=tk.FLAT,
+                        padx=6,
+                        command=lambda i=item.id: self._on_focus_item(i),
+                    ).pack(side=tk.LEFT, padx=2)
 
-            tk.Button(
-                row,
-                text="Focar",
-                font=("Sans", 8, "bold"),
-                bg=self.ACCENT,
-                fg="#11111b",
-                relief=tk.FLAT,
-                padx=6,
-                command=lambda i=item.id: self._on_focus_item(i),
-            ).pack(side=tk.LEFT, padx=2)
+                    tk.Button(
+                        row,
+                        text="Pausar" if item.active else "Ativar",
+                        font=("Sans", 8),
+                        bg="#45475a",
+                        fg=self.FG_TEXT,
+                        relief=tk.FLAT,
+                        padx=6,
+                        command=lambda i=item.id: self._on_toggle_item(i),
+                    ).pack(side=tk.LEFT, padx=2)
 
-            tk.Button(
-                row,
-                text="Pausar" if item.active else "Ativar",
-                font=("Sans", 8),
-                bg="#45475a",
-                fg=self.FG_TEXT,
-                relief=tk.FLAT,
-                padx=6,
-                command=lambda i=item.id: self._on_toggle_item(i),
-            ).pack(side=tk.LEFT, padx=2)
+                    tk.Button(
+                        row,
+                        text="🗑",
+                        font=("Sans", 8),
+                        bg=self.RED,
+                        fg="#11111b",
+                        relief=tk.FLAT,
+                        padx=6,
+                        command=lambda i=item.id: self._on_delete_item(i),
+                    ).pack(side=tk.LEFT, padx=(2, 0))
+        else:
+            self.watchlist_frame.pack_forget()
 
-            tk.Button(
-                row,
-                text="🗑",
-                font=("Sans", 8),
-                bg=self.RED,
-                fg="#11111b",
-                relief=tk.FLAT,
-                padx=6,
-                command=lambda i=item.id: self._on_delete_item(i),
-            ).pack(side=tk.LEFT, padx=(2, 0))
+        # Atualiza container Promoções achadas
+        for child in self.deals_frame.winfo_children():
+            child.destroy()
+
+        if self.show_deals:
+            self.deals_frame.pack(fill=tk.X, padx=14, pady=4)
+            if not recent_deals:
+                tk.Label(
+                    self.deals_frame,
+                    text="Nenhuma promoção encontrada recentemente.",
+                    bg=self.BG_CARD,
+                    fg=self.FG_MUTED,
+                ).pack(pady=6)
+            else:
+                for deal in recent_deals:
+                    row = tk.Frame(self.deals_frame, bg="#181825", padx=8, pady=5)
+                    row.pack(fill=tk.X, pady=2)
+
+                    short_title = (
+                        deal.title[:40] + "…" if len(deal.title) > 40 else deal.title
+                    )
+                    tk.Label(
+                        row,
+                        text=f"🔥 {short_title} — R$ {deal.price:.2f} ({deal.store})",
+                        font=("Sans", 9, "bold"),
+                        bg="#181825",
+                        fg=self.FG_TEXT,
+                        anchor="w",
+                    ).pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+                    tk.Button(
+                        row,
+                        text="Abrir ↗",
+                        font=("Sans", 8, "bold"),
+                        bg=self.GREEN,
+                        fg="#11111b",
+                        relief=tk.FLAT,
+                        padx=8,
+                        command=lambda u=deal.url: open_url_in_browser(u),
+                    ).pack(side=tk.RIGHT, padx=(4, 0))
+        else:
+            self.deals_frame.pack_forget()
+
+        self.root.update_idletasks()
+        self.root.geometry("")
 
     def _build_query_payload(self) -> str:
         q = self.entry_query.get().strip()
@@ -427,8 +517,9 @@ class ControlPanelWindow:
 
     def _on_test_pc_notify(self) -> None:
         send_desktop_notification(
-            title="🚨 Deals Hunter — Teste no PC",
-            body="Suas notificações nativas direto no computador estão funcionando!",
+            title="🚨 Deals Hunter — Teste Clicável",
+            body="👆 Clique nesta notificação para testar a abertura no navegador!",
+            url="https://github.com/Caspiom/Deals-Hunter",
         )
 
     def _on_save_settings(self) -> None:
@@ -454,6 +545,7 @@ class ControlPanelWindow:
                 title="🔍 Deals Hunter — Busca Concluída",
                 body=f"{total} produto(s) verificado(s), {found} nova(s) oferta(s) encontrada(s).",
             )
+            self.root.after(0, self.refresh_ui)
 
         threading.Thread(target=_worker, daemon=True).start()
 

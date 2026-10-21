@@ -3,6 +3,8 @@
 local typedQuery = ""
 local typedPrice = ""
 local inputSeed = 0
+local showWatchlist = false
+local showDeals = false
 
 local function sendCmd(action, arg)
     noctalia.state.set("cmd", {
@@ -41,125 +43,7 @@ local function render()
     local items = type(status.items) == "table" and status.items or {}
     local recentDeals = type(status.recent_deals) == "table" and status.recent_deals or {}
 
-    local scrollChildren = {}
-
-    table.insert(scrollChildren, ui.label({
-        text = "Produtos na Watchlist:",
-        fontSize = 12,
-        fontWeight = "medium",
-        color = "on_surface_variant",
-    }))
-
-    for _idx, item in ipairs(items) do
-        local isAct = item.active == true
-        local itemId = tostring(item.id)
-        local priceStr = string.format("<= R$ %.0f", tonumber(item.max_price) or 0)
-
-        table.insert(scrollChildren, ui.row({
-            gap = 8,
-            align = "center",
-            padding = 8,
-            fill = isAct and "primary/0.2" or "surface_variant/0.4",
-            radius = 8,
-        }, {
-            ui.toggle({
-                checked = isAct,
-                enabled = not busy,
-                onChange = function(_val)
-                    sendCmd("toggle-item", itemId)
-                end,
-            }),
-            ui.column({ gap = 2, flexGrow = 1 }, {
-                ui.label({
-                    text = tostring(item.query),
-                    fontWeight = "bold",
-                    color = isAct and "primary" or "on_surface",
-                }),
-                ui.label({
-                    text = priceStr,
-                    fontSize = 11,
-                    color = "on_surface_variant",
-                }),
-            }),
-            ui.button({
-                text = "Focar",
-                variant = isAct and "primary" or "secondary",
-                enabled = not busy,
-                onClick = function()
-                    sendCmd("select-only", itemId)
-                end,
-            }),
-            ui.button({
-                glyph = "trash",
-                variant = "destructive",
-                enabled = not busy,
-                onClick = function()
-                    sendCmd("del-item", itemId)
-                end,
-            }),
-        }))
-    end
-
-    if #items == 0 then
-        table.insert(scrollChildren, ui.label({
-            text = "Nenhum produto cadastrado.",
-            color = "on_surface_variant",
-        }))
-    end
-
-    if #recentDeals > 0 then
-        table.insert(scrollChildren, ui.label({
-            text = "Últimas Ofertas Encontradas (Clique em Abrir):",
-            fontSize = 12,
-            fontWeight = "medium",
-            color = "on_surface_variant",
-        }))
-
-        for _i, deal in ipairs(recentDeals) do
-            local dealUrl = tostring(deal.url or "")
-            local shortTitle = tostring(deal.title or "Oferta")
-            if #shortTitle > 34 then
-                shortTitle = shortTitle:sub(1, 34) .. "…"
-            end
-            local priceInfo = string.format(
-                "R$ %.2f • %s",
-                tonumber(deal.price) or 0,
-                tostring(deal.store or "Loja")
-            )
-
-            table.insert(scrollChildren, ui.row({
-                gap = 8,
-                align = "center",
-                padding = 8,
-                fill = "surface_variant/0.4",
-                radius = 8,
-            }, {
-                ui.column({ gap = 2, flexGrow = 1 }, {
-                    ui.label({
-                        text = shortTitle,
-                        fontSize = 12,
-                        fontWeight = "bold",
-                        color = "on_surface",
-                    }),
-                    ui.label({
-                        text = priceInfo,
-                        fontSize = 11,
-                        color = "primary",
-                    }),
-                }),
-                ui.button({
-                    text = "Abrir",
-                    glyph = "external-link",
-                    variant = "primary",
-                    onClick = function()
-                        sendCmd("open-url", dealUrl)
-                    end,
-                }),
-            }))
-        end
-    end
-
-    panel.render(ui.column({ gap = 12, flexGrow = 1 }, {
+    local mainChildren = {
         -- Cabeçalho + Botão de Fechar
         ui.row({ align = "center", justify = "space_between", gap = 8 }, {
             ui.row({ gap = 8, align = "center", flexGrow = 1 }, {
@@ -262,30 +146,174 @@ local function render()
             }),
         }),
 
-        -- Lista rolável (Watchlist + Últimas Ofertas Encontradas)
-        ui.scroll({ flexGrow = 1, gap = 8 }, scrollChildren),
-
-        -- Rodapé: Forçar Varredura Agora
-        ui.row({ gap = 8, align = "center", justify = "space_between" }, {
-            ui.label({
-                text = busy and "Processando..." or tostring(status.message or "Pronto"),
-                fontSize = 11,
-                color = "on_surface_variant",
-                flexGrow = 1,
+        -- Botões Expansíveis: Watchlist | Promoções achadas
+        ui.row({ gap = 8, justify = "space_between" }, {
+            ui.button({
+                text = string.format("Watchlist (%d)", #items),
+                glyph = showWatchlist and "chevron-up" or "chevron-down",
+                variant = showWatchlist and "primary" or "secondary",
+                onClick = "onToggleWatchlist",
             }),
             ui.button({
-                text = "Buscar Agora",
-                glyph = "refresh",
-                variant = "secondary",
-                enabled = not busy,
-                onClick = "onCheckNow",
+                text = string.format("Promoções achadas (%d)", #recentDeals),
+                glyph = showDeals and "chevron-up" or "chevron-down",
+                variant = showDeals and "primary" or "secondary",
+                onClick = "onToggleDeals",
             }),
         }),
+    }
+
+    -- Seção Expansível: Watchlist
+    if showWatchlist then
+        local wlRows = {}
+        for _idx, item in ipairs(items) do
+            local isAct = item.active == true
+            local itemId = tostring(item.id)
+            local priceStr = string.format("<= R$ %.0f", tonumber(item.max_price) or 0)
+
+            table.insert(wlRows, ui.row({
+                gap = 8,
+                align = "center",
+                padding = 8,
+                fill = isAct and "primary/0.2" or "surface_variant/0.4",
+                radius = 8,
+            }, {
+                ui.toggle({
+                    checked = isAct,
+                    enabled = not busy,
+                    onChange = function(_val)
+                        sendCmd("toggle-item", itemId)
+                    end,
+                }),
+                ui.column({ gap = 2, flexGrow = 1 }, {
+                    ui.label({
+                        text = tostring(item.query),
+                        fontWeight = "bold",
+                        color = isAct and "primary" or "on_surface",
+                    }),
+                    ui.label({
+                        text = priceStr,
+                        fontSize = 11,
+                        color = "on_surface_variant",
+                    }),
+                }),
+                ui.button({
+                    text = "Focar",
+                    variant = isAct and "primary" or "secondary",
+                    enabled = not busy,
+                    onClick = function()
+                        sendCmd("select-only", itemId)
+                    end,
+                }),
+                ui.button({
+                    glyph = "trash",
+                    variant = "destructive",
+                    enabled = not busy,
+                    onClick = function()
+                        sendCmd("del-item", itemId)
+                    end,
+                }),
+            }))
+        end
+
+        if #wlRows == 0 then
+            table.insert(wlRows, ui.label({
+                text = "Nenhum produto cadastrado na Watchlist.",
+                color = "on_surface_variant",
+            }))
+        end
+
+        table.insert(mainChildren, ui.column({ gap = 6 }, wlRows))
+    end
+
+    -- Seção Expansível: Promoções achadas
+    if showDeals then
+        local dealRows = {}
+        for _i, deal in ipairs(recentDeals) do
+            local dealUrl = tostring(deal.url or "")
+            local shortTitle = tostring(deal.title or "Oferta")
+            if #shortTitle > 34 then
+                shortTitle = shortTitle:sub(1, 34) .. "…"
+            end
+            local priceInfo = string.format(
+                "R$ %.2f • %s",
+                tonumber(deal.price) or 0,
+                tostring(deal.store or "Loja")
+            )
+
+            table.insert(dealRows, ui.row({
+                gap = 8,
+                align = "center",
+                padding = 8,
+                fill = "surface_variant/0.4",
+                radius = 8,
+            }, {
+                ui.column({ gap = 2, flexGrow = 1 }, {
+                    ui.label({
+                        text = shortTitle,
+                        fontSize = 12,
+                        fontWeight = "bold",
+                        color = "on_surface",
+                    }),
+                    ui.label({
+                        text = priceInfo,
+                        fontSize = 11,
+                        color = "primary",
+                    }),
+                }),
+                ui.button({
+                    text = "Abrir",
+                    glyph = "external-link",
+                    variant = "primary",
+                    onClick = function()
+                        sendCmd("open-url", dealUrl)
+                    end,
+                }),
+            }))
+        end
+
+        if #dealRows == 0 then
+            table.insert(dealRows, ui.label({
+                text = "Nenhuma promoção encontrada recentemente.",
+                color = "on_surface_variant",
+            }))
+        end
+
+        table.insert(mainChildren, ui.column({ gap = 6 }, dealRows))
+    end
+
+    -- Rodapé: Forçar Varredura Agora
+    table.insert(mainChildren, ui.row({ gap = 8, align = "center", justify = "space_between" }, {
+        ui.label({
+            text = busy and "Processando..." or tostring(status.message or "Pronto"),
+            fontSize = 11,
+            color = "on_surface_variant",
+            flexGrow = 1,
+        }),
+        ui.button({
+            text = "Buscar Agora",
+            glyph = "refresh",
+            variant = "secondary",
+            enabled = not busy,
+            onClick = "onCheckNow",
+        }),
     }))
+
+    panel.render(ui.column({ gap = 12 }, mainChildren))
 end
 
 function onToggleService()
     sendCmd("toggle-service", "")
+end
+
+function onToggleWatchlist()
+    showWatchlist = not showWatchlist
+    render()
+end
+
+function onToggleDeals()
+    showDeals = not showDeals
+    render()
 end
 
 function onQueryChange(val)
