@@ -125,3 +125,24 @@ Once linked, you can manage your watchlist from anywhere:
 - `/list` — Lists all products in your Watchlist
 - `/del <ID>` — Removes a product by its ID
 - `/check` — Forces an immediate price check across stores
+
+---
+---
+
+## ☕ Gostou? Me compra um café / Buy me a coffee
+
+Se o **Deals Hunter** te ajudou a economizar em alguma promoção e você quiser apoiar o projeto via **Pix** (aponte a câmera do celular para o QR Code ou copie a chave abaixo):
+
+<p align="center">
+  <img src="../assets/pix-qrcode.png" alt="QR Code Pix — Deals Hunter" width="220">
+</p>
+
+- **Chave Pix (Aleatória):**
+  ```text
+  d32ae5c1-1a23-477b-a9be-3664a33f301f
+  ```
+- **Pix Copia e Cola:**
+  ```text
+  00020126580014BR.GOV.BCB.PIX0136d32ae5c1-1a23-477b-a9be-3664a33f301f5204000053039865802BR5925Lucas Alves Matos Sampaio6009SAO PAULO62140510gNpAtwJNc163040AB5
+  ```
+

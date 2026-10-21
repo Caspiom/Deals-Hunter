@@ -357,6 +357,28 @@ local function buildSettings(busy)
     })
 end
 
+local function buildCoffeeCard()
+    return card({ gap = 8, align = "center", padding = 10, fill = "primary/0.15" }, {
+        ui.glyph({ name = "coffee", color = "primary" }),
+        ui.column({ gap = 2, flexGrow = 1 }, {
+            ui.label({ text = "Gostou? Me compra um café", fontSize = 12, fontWeight = "bold", color = "on_surface" }),
+            ui.label({ text = "Apoie o projeto via Pix", fontSize = 11, color = "on_surface_variant" }),
+        }),
+        ui.button({
+            text = "Chave Pix",
+            glyph = "copy",
+            variant = "secondary",
+            onClick = "onCopyPix",
+        }),
+        ui.button({
+            text = "QR Code",
+            glyph = "qrcode",
+            variant = "ghost",
+            onClick = "onOpenPixQr",
+        }),
+    })
+end
+
 local function buildFooter(status, busy)
     local text
     if busy then
@@ -419,9 +441,18 @@ local function render()
     else
         table.insert(children, buildDeals(recentDeals))
     end
+    table.insert(children, buildCoffeeCard())
     table.insert(children, buildFooter(status, busy))
 
     panel.render(ui.column({ gap = 12, flexGrow = 1 }, children))
+end
+
+function onCopyPix()
+    sendCmd("copy-pix", "")
+end
+
+function onOpenPixQr()
+    sendCmd("open-pix-qr", "")
 end
 
 function onToggleService()

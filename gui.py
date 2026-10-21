@@ -12,7 +12,10 @@ from typing import Callable
 from config import load_settings, update_env_values
 from ctl import (
     HELP_DOC_URL,
+    PIX_KEY,
+    PIX_QR_URL,
     SERVICE_NAME,
+    copy_to_clipboard,
     format_ago,
     format_brl,
     format_saving,
@@ -351,6 +354,36 @@ class ControlPanelWindow:
         # Rodapé
         footer = tk.Frame(body, bg=p.surface)
         footer.pack(side=tk.BOTTOM, fill=tk.X)
+
+        coffee_card = tk.Frame(footer, bg=p.surface_container, padx=10, pady=8)
+        coffee_card.pack(fill=tk.X, pady=(0, 10))
+        coffee_text = tk.Frame(coffee_card, bg=p.surface_container)
+        coffee_text.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self._label(coffee_text, "☕ Gostou? Me compra um café", p.surface_container, p.on_surface, 9, "bold").pack(
+            fill=tk.X
+        )
+        self._label(coffee_text, "Apoie o projeto via Pix", p.surface_container, size=8).pack(fill=tk.X)
+        self._button(
+            coffee_card,
+            "QR Code",
+            lambda: open_url_in_browser(PIX_QR_URL),
+            p.surface_container_high,
+            p.on_surface_variant,
+            size=9,
+            padx=8,
+            pady=4,
+        ).pack(side=tk.RIGHT, padx=(4, 0))
+        self._button(
+            coffee_card,
+            "Chave Pix",
+            self._on_copy_pix,
+            p.secondary_container,
+            p.on_secondary_container,
+            size=9,
+            padx=8,
+            pady=4,
+        ).pack(side=tk.RIGHT)
+
         tk.Frame(footer, bg=p.outline_variant, height=1).pack(fill=tk.X, pady=(0, 12))
         footer_row = tk.Frame(footer, bg=p.surface)
         footer_row.pack(fill=tk.X)
@@ -661,6 +694,17 @@ class ControlPanelWindow:
     def _on_delete_item(self, item_id: int) -> None:
         self.db.delete_watchlist_item(item_id)
         self.footer_message = ""
+        self.refresh_ui()
+
+    def _on_copy_pix(self) -> None:
+        try:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(PIX_KEY)
+            self.root.update()
+        except tk.TclError:
+            pass
+        copy_to_clipboard(PIX_KEY)
+        self.footer_message = "Chave Pix copiada! ☕ Obrigado pelo apoio!"
         self.refresh_ui()
 
     def _on_test_pc_notify(self) -> None:

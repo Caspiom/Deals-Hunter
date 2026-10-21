@@ -16,6 +16,30 @@ from notifier import open_url_in_browser, send_desktop_notification
 BASE_DIR = Path(__file__).resolve().parent
 SERVICE_NAME = "deal-hunter.service"
 HELP_DOC_URL = "https://github.com/Caspiom/Deals-Hunter/tree/main/doc"
+PIX_KEY = "d32ae5c1-1a23-477b-a9be-3664a33f301f"
+PIX_BRCODE = (
+    "00020126580014BR.GOV.BCB.PIX0136d32ae5c1-1a23-477b-a9be-3664a33f301f"
+    "5204000053039865802BR5925Lucas Alves Matos Sampaio6009SAO PAULO"
+    "62140510gNpAtwJNc163040AB5"
+)
+PIX_QR_URL = "https://github.com/Caspiom/Deals-Hunter/tree/main/doc#-gostou-me-compra-um-caf%C3%A9--buy-me-a-coffee"
+
+
+def copy_to_clipboard(text: str) -> bool:
+    for cmd in (
+        ["wl-copy"],
+        ["xclip", "-selection", "clipboard"],
+        ["xsel", "--clipboard", "--input"],
+        ["clip"],
+        ["pbcopy"],
+    ):
+        try:
+            proc = subprocess.run(cmd, input=text, text=True, capture_output=True, timeout=2)
+            if proc.returncode == 0:
+                return True
+        except (OSError, subprocess.SubprocessError):
+            continue
+    return False
 
 
 def is_service_active() -> bool:
@@ -274,6 +298,15 @@ def main() -> None:
     elif cmd == "open-help":
         open_url_in_browser(HELP_DOC_URL)
         msg = "Guia aberto no navegador!"
+    elif cmd == "copy-pix":
+        copy_to_clipboard(PIX_KEY)
+        msg = "Chave Pix copiada! ☕ Obrigado pelo apoio!"
+    elif cmd == "copy-pix-qr":
+        copy_to_clipboard(PIX_BRCODE)
+        msg = "Pix Copia e Cola copiado! ☕ Obrigado!"
+    elif cmd == "open-pix-qr":
+        open_url_in_browser(PIX_QR_URL)
+        msg = "QR Code Pix aberto no navegador! ☕"
     elif cmd == "save-settings":
         raw = " ".join(sys.argv[2:])
         parts = raw.split("|")

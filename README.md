@@ -141,6 +141,25 @@ The installer automatically detects your Linux distribution and Desktop Environm
 
 ---
 
+### ☕ Apoie o Projeto — Me compra um café?
+
+O **Deals Hunter** te ajudou a economizar em alguma promoção? Se quiser apoiar o desenvolvimento e pagar um café via **Pix**:
+
+<p align="center">
+  <img src="assets/pix-qrcode.png" alt="QR Code Pix — Deals Hunter" width="200">
+</p>
+
+- **Chave Pix (Aleatória):**
+  ```text
+  d32ae5c1-1a23-477b-a9be-3664a33f301f
+  ```
+- **Pix Copia e Cola:**
+  ```text
+  00020126580014BR.GOV.BCB.PIX0136d32ae5c1-1a23-477b-a9be-3664a33f301f5204000053039865802BR5925Lucas Alves Matos Sampaio6009SAO PAULO62140510gNpAtwJNc163040AB5
+  ```
+
+---
+
 ### 📄 License
 
 Released under the [MIT License](LICENSE).
