@@ -5,6 +5,7 @@ import asyncio
 import json
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 from config import load_settings
@@ -25,9 +26,44 @@ def is_service_active() -> bool:
     return res.stdout.strip() == "active"
 
 
+def format_brl(value: float) -> str:
+    """2349.0 -> 'R$ 2.349' | 49.9 -> 'R$ 49,90'"""
+    text = f"{float(value or 0):,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
+    if text.endswith(",00"):
+        text = text[:-3]
+    return f"R$ {text}"
+
+
+def format_ago(found_at: str) -> str:
+    """Converte o timestamp UTC do SQLite ('YYYY-MM-DD HH:MM:SS') em 'há 12 min'."""
+    try:
+        found = datetime.strptime(found_at[:19], "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        return ""
+    minutes = int((datetime.now(timezone.utc) - found).total_seconds() // 60)
+    if minutes < 1:
+        return "agora"
+    if minutes < 60:
+        return f"há {minutes} min"
+    hours = minutes // 60
+    if hours < 24:
+        return f"há {hours} h"
+    days = hours // 24
+    return "ontem" if days == 1 else f"há {days} dias"
+
+
+def format_saving(price: float, max_price: float | None) -> str:
+    if not max_price or max_price <= 0 or price <= 0:
+        return ""
+    pct = round((1 - price / max_price) * 100)
+    return f"−{pct}% do alvo" if pct > 0 else "no alvo"
+
+
 def build_status_dict(db: Database, message: str = "") -> dict:
     running = is_service_active()
     items = db.list_watchlist()
+    items_by_id = {it.id: it for it in items}
+    found_counts = db.count_deals_by_watchlist()
     active_queries = [it.query for it in items if it.active]
     if not active_queries:
         summary = "Sem produto"
@@ -37,18 +73,31 @@ def build_status_dict(db: Database, message: str = "") -> dict:
         summary = f"{active_queries[0]} +{len(active_queries) - 1}"
 
     recent = db.list_recent_deals(limit=6)
+    last_ago = format_ago(recent[0].found_at) if recent else ""
+    if not running:
+        footer = "Busca automática pausada"
+    elif last_ago:
+        footer = f"Monitorando · última promoção {last_ago}"
+    else:
+        footer = "Monitorando · nenhuma promoção ainda"
+
     return {
         "service_active": running,
         "summary": summary,
         "message": message,
+        "active_count": len(active_queries),
+        "total_count": len(items),
+        "footer": footer,
         "items": [
             {
                 "id": it.id,
                 "query": it.query,
                 "max_price": it.max_price,
+                "max_price_label": format_brl(it.max_price),
                 "min_price": it.min_price,
                 "exclude_words": it.exclude_words,
                 "active": it.active,
+                "found_count": found_counts.get(it.id, 0),
             }
             for it in items
         ],
@@ -56,8 +105,16 @@ def build_status_dict(db: Database, message: str = "") -> dict:
             {
                 "title": d.title,
                 "price": d.price,
+                "price_label": format_brl(d.price),
                 "url": d.url,
                 "store": d.store,
+                "ago": format_ago(d.found_at),
+                "saving": format_saving(
+                    d.price,
+                    items_by_id[d.watchlist_id].max_price
+                    if d.watchlist_id in items_by_id
+                    else None,
+                ),
             }
             for d in recent
         ],

@@ -69,8 +69,23 @@ O instalador detecta automaticamente sua distribuição e seu ambiente gráfico 
 
 Se desejar controlar e receber alertas também pelo Telegram:
 1. No Telegram, converse com o **[@BotFather](https://t.me/BotFather)**, envie `/newbot` e copie o **Token HTTP API**.
-2. Abra o Painel Gráfico (`main.py --gui`), cole o **Bot Token** no campo correspondente e clique em **Salvar Configurações** (ou edite o arquivo `.env`).
+2. Abra o Painel Gráfico (`main.py --gui`), vá na aba **Ajustes**, cole o **Bot Token** e clique em **Salvar ajustes** (ou edite o arquivo `.env`).
 3. Envie `/start` para o seu novo bot no Telegram — o **Deals Hunter** detectará e salvará seu `ALLOWED_CHAT_ID` pessoal automaticamente!
+
+---
+
+### 🎨 Cores e Tema do Painel
+
+O painel usa só papéis de cor do Material 3 (`primary`, `surface_container`, `on_surface`…), então se adapta ao sistema:
+
+| Onde | De onde vêm as cores |
+| :--- | :--- |
+| **Noctalia** | Direto do matugen (plugin Luau). O painel `--gui` também lê `~/.config/noctalia/colors.json`. |
+| **Outro setup com matugen** | Adicione o template `integrations/matugen/deal-hunter-colors.json` no `config.toml` do matugen com `output_path = "~/.config/deal-hunter/colors.json"`. |
+| **GNOME / KDE / XFCE / macOS** | Tema próprio do app (laranja "etiqueta de preço"), claro ou escuro conforme a preferência do sistema. |
+| **Windows 10/11** | Claro/escuro do Windows + sua cor de destaque. |
+
+Para forçar um tema: `DEAL_HUNTER_THEME=light|dark|windows` (no `.env` ou no ambiente).
 
 ---
 ---
@@ -116,7 +131,8 @@ The installer automatically detects your Linux distribution and Desktop Environm
 
 - `main.py` — Asyncio orchestrator running the background scraper worker (with 10–15 min random jitter) and optional Telegram polling listener.
 - `notifier.py` — Cross-platform native PC desktop notification dispatcher (Linux D-Bus/`gdbus`/`notify-send`, Windows `.NET NotifyIcon`, macOS `osascript`).
-- `gui.py` — Dark-themed Tkinter Control Panel to toggle the bot, pick the active searched product, manage the watchlist, and optionally configure Telegram.
+- `gui.py` — Tkinter Control Panel (same layout as the Noctalia panel) to toggle the bot, add products, browse found deals, manage the watchlist, and optionally configure Telegram.
+- `theme.py` — Resolves the panel colors as Material 3 roles: matugen/Noctalia colors when available, the Windows theme + accent color on Windows, otherwise the app's own light/dark palette (override with `DEAL_HUNTER_THEME=light|dark|windows`).
 - `tray.py` — Universal System Tray icon (`pystray` + `Pillow`) for Windows and Linux Desktop Environments.
 - `scrapers.py` — Modular `DealProvider` interface with `PelandoProvider` and `PromobitProvider` + `validate_deal` anti-false positive filter.
 - `db.py` — SQLite WAL persistence (`watchlist` and `seen_deals` tables).

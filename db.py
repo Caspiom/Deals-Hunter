@@ -246,6 +246,17 @@ class Database:
             ).fetchone()
             return str(row["url"]) if row else None
 
+    def count_deals_by_watchlist(self) -> dict[int, int]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT watchlist_id, COUNT(*) AS total FROM seen_deals
+                WHERE watchlist_id IS NOT NULL AND url != ''
+                GROUP BY watchlist_id
+                """
+            ).fetchall()
+            return {int(r["watchlist_id"]): int(r["total"]) for r in rows}
+
     def list_recent_deals(self, limit: int = 8) -> list[SeenDealRecord]:
         with self._connect() as conn:
             rows = conn.execute(

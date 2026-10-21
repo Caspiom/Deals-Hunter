@@ -15,9 +15,9 @@ local function render(status)
         barWidget.setText("")
     end
 
-    local stateLabel = running and "🟢 Bot ATIVO" or "🔴 Bot PARADO"
+    local stateLabel = running and "Monitorando" or "Pausado"
     barWidget.setTooltip(
-        stateLabel .. " — Monitorando: " .. summary .. "\n(Clique Esq: Painel | Clique Dir: Ligar/Desligar)"
+        "Deal Hunter · " .. stateLabel .. ": " .. summary .. "\nClique: painel · Direito: ligar/desligar · Meio: buscar agora"
     )
 end
 
